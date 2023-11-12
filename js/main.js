@@ -1,37 +1,53 @@
-const API_KEY = `78462abb0f094416b661b51f2711b8c9`;
+const API_KEY = `6e847aa220e241d291e62dc767b055c8`;
 
 let url = new URL(
   `https://newsapi.org/v2/top-headlines?country=kr&apiKey=${API_KEY}`
 );
 let articles = [];
 
+const searchForm = document.querySelector('.search-form');
 const searchIcon = document.querySelector('.search-icon');
 const searchInput = document.querySelector('.search-input');
-const searchBtn = document.querySelector('.search-btn');
 const menus = document.querySelector('.menus');
+const newsBoard = document.querySelector('#news-board');
 
-searchIcon.addEventListener('click', () => {
-  document.querySelector('.search').classList.toggle('active');
-});
-searchInput.addEventListener('keydown', (event) => {
-  if (event.code === 'Enter') {
-    getNewsByKeyword(event);
-  }
-});
-searchBtn.addEventListener('click', getNewsByKeyword);
-menus.addEventListener('click', (event) => {
-  if (event.target.tagName === 'BUTTON') {
-    getNewsByCategory(event);
-  }
-});
+const init = function() {
+  getLatestNews();
+  bindEvents();
+}
+
+const bindEvents = function() {
+  searchIcon.addEventListener('click', () => searchForm.classList.toggle('active'));
+  searchForm.addEventListener('submit', (event) => {
+    event.preventDefault();
+    getNewsByKeyword();
+  });
+  menus.addEventListener('click', (event) => {
+    if (event.target.tagName === 'BUTTON') {
+      getNewsByCategory(event);
+    }
+  });
+}
 
 const getNews = async () => {
-  const response = await fetch(url);
-  const data = await response.json();
-
-  articles = data.articles;
-  render();
+  try {
+    const response = await fetch(url);
+    const data = await response.json();
+    
+    if(response.status === 200) {
+      if(data.totalResults === 0) {
+        throw new Error('No result for this search');
+      }
+      articles = data.articles;
+      render();
+    } else {
+      throw new Error(data.message);
+    }
+  } catch (error) {
+    errorRender(error.message);
+  }
 };
+
 const getLatestNews = () => {
   url = new URL(
     `https://newsapi.org/v2/top-headlines?country=kr&apiKey=${API_KEY}`
@@ -40,9 +56,7 @@ const getLatestNews = () => {
   getNews();
 };
 
-getLatestNews();
-
-function getNewsByCategory(event) {
+const getNewsByCategory = (event) => {
   const category = event.target.textContent.toLowerCase();
   url = new URL(
     `https://newsapi.org/v2/top-headlines?country=kr&category=${category}&apiKey=${API_KEY}`
@@ -51,7 +65,7 @@ function getNewsByCategory(event) {
   getNews();
 }
 
-function getNewsByKeyword() {
+const getNewsByKeyword = () => {
   const keyword = searchInput.value;
   url = new URL(
     `https://newsapi.org/v2/top-headlines?country=kr&q=${keyword}&apiKey=${API_KEY}`
@@ -61,7 +75,7 @@ function getNewsByKeyword() {
   searchInput.value = '';
 }
 
-function render() {
+const render = () => {
   let resultHTML = ``;
   articles
     .map((article) => {
@@ -93,5 +107,16 @@ function render() {
   </div>`;
     })
     .join();
-  document.getElementById('news-board').innerHTML = resultHTML;
+  newsBoard.innerHTML = resultHTML;
 }
+
+const errorRender = (errorMessage) => {
+  const errorHTML = `
+  <div class='alert alert-danger' role='alert'>
+   ${errorMessage}
+  </div>`;
+
+  newsBoard.innerHTML = errorHTML;
+}
+
+init();

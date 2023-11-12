@@ -41,14 +41,14 @@ img {
   align-items: center;
 }
 
-.search {
+.search-form {
   display: flex;
   opacity: 0;
   pointer-events: none;
-  transition: .3s;
+  transition: opacity .5s;
 }
 
-.search.active {
+.search-form.active {
   opacity: 1;
   pointer-events: auto;
 }
@@ -58,11 +58,13 @@ img {
   cursor: pointer;
   font-size: 20px;
 }
+
 .search-input {
   width: 0;
   transition: width .5s;
 }
-.search.active .search-input {
+
+.search-form.active .search-input {
   width: 100%;
 }
 
