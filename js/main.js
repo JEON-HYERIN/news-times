@@ -1,154 +1,86 @@
-const API_KEY = `ee66bb688cdd4644aabb7ce2f5785fa4`;
+const API_KEY = `78462abb0f094416b661b51f2711b8c9`;
 
-let newsList = [];
-const menus = document.querySelectorAll('.menus button');
+let articles = [];
+
+const searchIcon = document.querySelector('.search-icon');
+const searchInput = document.querySelector('.search-input');
 const searchBtn = document.querySelector('.search-btn');
-let url = new URL(
-  `https://newsapi.org/v2/top-headlines?country=kr&apiKey=${API_KEY}`
-);
-let totalResults = 0;
-let page = 1;
-const pageSize = 3;
-const groupSize = 5;
+const menus = document.querySelectorAll('.menus button');
 
-menus.forEach(menu => menu.addEventListener('click', (event) => getNewsByCategory(event)));
-
-const getNews = async () => {
-  try{
-    url.searchParams.set('page', page); // &page=page
-    url.searchParams.set('pageSize', pageSize);
-
-    const response = await fetch(url);
-    const data = await response.json();
-
-    if(response.status === 200) {
-      if(data.articles.length === 0) {
-        throw new Error('No result for this search');
-      }
-      newsList = data.articles;
-      totalResults = data.totalResults;
-      render();
-      paginationRender();
-      console.log(data);
-    } else {
-      throw new Error(data.message);
-    }
-  }catch(error) {
-    errorRender(error.message);
+searchIcon.addEventListener('click', () => {document.querySelector('.search').classList.toggle('active')});
+searchInput.addEventListener('keydown', (event) => {
+  if(event.code === 'Enter') {
+    getNewsByKeyword(event);
   }
-}
+})
 
-
-const getLatestNews = async () => {
-  url = new URL(
+searchBtn.addEventListener('click', getNewsByKeyword);
+menus.forEach((menu) => menu.addEventListener('click', (event) => getNewsByCategory(event)));
+const getNews = async () => {
+  const url = new URL(
     `https://newsapi.org/v2/top-headlines?country=kr&apiKey=${API_KEY}`
   );
-
-  getNews();
+  const response = await fetch(url);
+  const data = await response.json();
+  articles = data.articles;
+  console.log("data", data);
+  render();
 };
 
-const getNewsByKeyword = async () => {
-  const keyword = document.querySelector('.search-input').value;
-
-  page = 1;
-
-  url = new URL(`https://newsapi.org/v2/top-headlines?country=kr&Q=${keyword}&apiKey=${API_KEY}`);
-
-  getNews();
-}
+getNews();
 
 const getNewsByCategory = async (event) => {
-  const category = event.target.textContent.toLowerCase();
+  const category = (event.target.textContent).toLowerCase();
+  const url = new URL(`https://newsapi.org/v2/top-headlines?country=kr&category=${category}&apiKey=${API_KEY}`);
+  const response = await fetch(url);
+  const data = await response.json();
 
-  page = 1;
-
-  url = new URL(`https://newsapi.org/v2/top-headlines?country=kr&category=${category}&apiKey=${API_KEY}`);
-
-  getNews();
+  articles = data.articles;
+  render();
 }
 
-const render = () => {
-  const newsHTML = newsList.map(
-    (news) => `
-  <div class="row news">
+async function getNewsByKeyword () {
+  const keyword = searchInput.value;
+  const url = new URL(`https://newsapi.org/v2/top-headlines?country=kr&q=${keyword}&apiKey=${API_KEY}`);
+  const response = await fetch(url);
+  const data = await response.json();
+
+  articles = data.articles;
+  searchInput.value = '';
+  render();
+}
+
+function render() {
+  let resultHTML = ``;
+  articles
+    .map((article) => {
+      resultHTML += `<div class="row news">
     <div class="col-lg-4">
-      <img class="news-img"
+      <img
         src=${
-        news.urlToImage == null ? 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRqEWgS0uxxEYJ0PsOb2OgwyWvC0Gjp8NUdPw&usqp=CAU' : news.urlToImage
+          article.urlToImage ||
+          "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRqEWgS0uxxEYJ0PsOb2OgwyWvC0Gjp8NUdPw&usqp=CAU"
         }
         alt=""
+        aria-hidden="true"
       />
     </div>
     <div class="col-lg-8">
-      <h2 class="news-title">${news.title}</h2>
-      <p class="news-desc">${
-        news.description == null || news.description == '' ? '내용없음' : news.description.length > 200 ? news.description.substring(0, 200) + '...' : news.description
+      <h2>${article.title || "내용없음"}</h2>
+      <p>${
+        article.description === null
+          ? "내용없음"
+          : article.description.length > 200
+          ? article.description.substring(0, 200) + "..."
+          : article.description
       }</p>
-      <span>${news.source.name} ${moment().startOf('day').fromNow()}</span>
+      <span>${article.source.name || "no source"} ${moment(
+          "20231112",
+          "YYYYMMDD"
+      ).fromNow()}</span>
     </div>
-  </div>`
-  ).join('');
-  
-  document.getElementById("news-board").innerHTML = newsHTML;
-};
-
-const errorRender = (errorMessage) => {
-  const errorHTML = `<div class="alert alert-danger" role="alert">
-    ${errorMessage}
   </div>`;
-  document.querySelector('#news-board').innerHTML = errorHTML;
+    })
+    .join();
+  document.getElementById("news-board").innerHTML = resultHTML;
 }
-
-const paginationRender = () => {
-  let paginationHTML = ``;
-  const totalPages = Math.ceil(totalResults / pageSize);
-  const pageGroup = Math.ceil(page / groupSize);
-  let lastPage  = pageGroup *  groupSize;
-  // 마지막 페이지 그룹이 그룹사이즈 보다 작다? lastPage = totalPages
-  const firstPage = lastPage - (groupSize - 1) <= 0 ? 1 : lastPage - (groupSize - 1);
-  
-  if(lastPage > totalPages) {
-    lastPage = totalPages;
-  }
-
-  if(firstPage >= 6) {
-    paginationHTML = `
-    <li class="page-item" onclick="moveToPage(1)"><a class="page-link" href="#none">&lt;&lt;</a></li>
-    <li class="page-item" onclick="moveToPage(${page - 1})"><a class="page-link" href="#">&lt;</a></li>`;
-  }
-
-  for(let i = firstPage; i <= lastPage; i++) {
-    paginationHTML += `<li class="page-item ${i === page ? 'active' : ''}" onclick="moveToPage(${i})"><a class="page-link">${i}</a></li>`;
-  }
-
-  if(lastPage < totalPages) {
-    paginationHTML += `<li class="page-item" onclick="moveToPage(${page + 1})"><a class="page-link" href="#none">&gt;</a></li><li class="page-item" onclick="moveToPage(${totalPages})"><a class="page-link" href="#">&gt;&gt;</a></li>`;
-  }
-
-  document.querySelector('.pagination').innerHTML = paginationHTML; 
-{/* <nav aria-label="Page navigation example">
-  <ul class="pagination">
-    <li class="page-item">
-      <a class="page-link" href="#" aria-label="Previous">
-        <span aria-hidden="true">&laquo;</span>
-      </a>
-    </li>
-    <li class="page-item"><a class="page-link" href="#">1</a></li>
-    <li class="page-item"><a class="page-link" href="#">2</a></li>
-    <li class="page-item"><a class="page-link" href="#">3</a></li>
-    <li class="page-item">
-      <a class="page-link" href="#" aria-label="Next">
-        <span aria-hidden="true">&raquo;</span>
-      </a>
-    </li>
-  </ul>
-</nav> */}
-}
-
-const moveToPage = (pageNum) => {
-  console.log('move', pageNum);
-  page = pageNum;
-  getNews();
-}
-
-getLatestNews();
